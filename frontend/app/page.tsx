@@ -175,7 +175,7 @@ export default function Home() {
       try {
 
         const res = await axios.post(
-          "http://127.0.0.1:8000/generate-assessment",
+          "https://qraftai.onrender.com/generate-assessment",
           {
             topic,
             difficulty,
@@ -239,7 +239,7 @@ export default function Home() {
     try {
 
       const res = await axios.post(
-        "http://127.0.0.1:8000/upload-answer-image",
+        "https://qraftai.onrender.com/upload-answer-image",
         formData,
         {
           headers: {
@@ -279,7 +279,7 @@ export default function Home() {
       try {
 
         const res = await axios.post(
-          "http://127.0.0.1:8000/evaluate",
+          "https://qraftai.onrender.com/evaluate",
           {
             question:
               question.question,
@@ -336,7 +336,7 @@ export default function Home() {
           const q = questions[i];
 
           const res = await axios.post(
-            "http://127.0.0.1:8000/evaluate",
+            "https://qraftai.onrender.com/evaluate",
             {
               question:
                 q.question,
