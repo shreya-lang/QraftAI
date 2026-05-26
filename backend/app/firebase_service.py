@@ -1,3 +1,6 @@
+import logging
+import os
+
 import firebase_admin
 
 from firebase_admin import (
@@ -6,27 +9,51 @@ from firebase_admin import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 # ==========================================
 # PREVENT MULTIPLE INITIALIZATIONS
 # ==========================================
 
+CREDENTIAL_PATH = os.environ.get(
+    "FIREBASE_CREDENTIAL_PATH",
+    "serviceAccountKey.json"
+)
+
+
+db = None
+
 if not firebase_admin._apps:
 
-    cred = credentials.Certificate(
-        "serviceAccountKey.json"
-    )
+    if os.path.exists(CREDENTIAL_PATH):
 
-    firebase_admin.initialize_app(cred)
+        cred = credentials.Certificate(
+            CREDENTIAL_PATH
+        )
 
+        firebase_admin.initialize_app(cred)
 
-db = firestore.client()
+        db = firestore.client()
+
+    else:
+
+        logger.warning(
+            "Firebase credentials not found at %s; Firebase features will be disabled.",
+            CREDENTIAL_PATH
+        )
 
 
 # ==========================================
 # SAVE USER ATTEMPT
 # ==========================================
 
+
 def save_attempt(data):
+
+    if db is None:
+
+        return None
 
     db.collection(
         "attempts"
@@ -37,7 +64,16 @@ def save_attempt(data):
 # SAVE ANALYTICS
 # ==========================================
 
+
 def save_analytics(data):
+
+    if db is None:
+
+        return None
+
+    db.collection(
+        "analytics"
+    ).add(data)
 
     return True
 
@@ -46,7 +82,12 @@ def save_analytics(data):
 # GET USER ATTEMPTS
 # ==========================================
 
+
 def get_user_attempts(user_email):
+
+    if db is None:
+
+        return []
 
     docs = db.collection(
         "attempts"
@@ -71,7 +112,21 @@ def get_user_attempts(user_email):
 # GET USER ANALYTICS
 # ==========================================
 
+
 def get_user_analytics(user_email):
+
+    if db is None:
+
+        return {
+
+            "total_attempts": 0,
+
+            "average_score": 0,
+
+            "highest_score": 0,
+
+            "latest_difficulty": "Easy"
+        }
 
     docs = db.collection(
         "attempts"
