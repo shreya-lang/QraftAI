@@ -1,12 +1,22 @@
 from groq import Groq
 import os
 from dotenv import load_dotenv
+import time
+import hashlib
+import logging
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 client = Groq(
     api_key=os.getenv("GROQ_API_KEY")
 )
+GROQ_MODEL = "openai/gpt-oss-120b"
+# Simple in-memory cache to reduce repeated slow model calls
+# Keyed by prompt hash, stores (timestamp, response_text)
+_CACHE = {}
+_CACHE_TTL = 60 * 10  # 10 minutes
 
 
 # ==========================================
@@ -46,21 +56,46 @@ def generate_assessment(
     }}
     """
 
-    response = client.chat.completions.create(
+    # Use a cache to speed up repeated requests for the same prompt
+    prompt_key = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
 
-        model="llama-3.3-70b-versatile",
+    cached = _CACHE.get(prompt_key)
 
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
+    if cached:
+        ts, text = cached
+        if time.time() - ts < _CACHE_TTL:
+            return text
+        else:
+            # expired
+            _CACHE.pop(prompt_key, None)
 
-        temperature=0.8
-    )
+    try:
+        response = client.chat.completions.create(
 
-    return response.choices[0].message.content
+            model=GROQ_MODEL,
+
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+
+            temperature=0.8
+        )
+
+        content = response.choices[0].message.content
+
+        # store in cache
+        _CACHE[prompt_key] = (time.time(), content)
+
+        return content
+
+    except Exception as e:
+        logger.exception("Error calling Groq generate_assessment: %s", e)
+        # Fail gracefully with an informative JSON string so caller can handle
+        fallback = '{"questions": []}'
+        return fallback
 
 
 # ==========================================
@@ -97,7 +132,7 @@ def evaluate_answer(
 
     response = client.chat.completions.create(
 
-        model="llama-3.3-70b-versatile",
+        model=GROQ_MODEL,
 
         messages=[
             {
@@ -144,7 +179,7 @@ def detect_ai_generated(answer):
 
     response = client.chat.completions.create(
 
-        model="llama-3.3-70b-versatile",
+        model=GROQ_MODEL,
 
         messages=[
             {
@@ -194,7 +229,7 @@ def generate_recommendation(
 
     response = client.chat.completions.create(
 
-        model="llama-3.3-70b-versatile",
+        model=GROQ_MODEL,
 
         messages=[
             {

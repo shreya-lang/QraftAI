@@ -1,0 +1,11 @@
+node_modules
+.next
+dist
+build
+uploads
+*.pyc
+__pycache__
+frontend/node_modules
+backend/.venv
+serviceAccountKey.json
+.env
