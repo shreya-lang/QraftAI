@@ -1,45 +1,72 @@
-import easyocr
 import logging
 import os
 
+import cv2
+import pytesseract
+
 logger = logging.getLogger(__name__)
-
-reader = None
-
-
-def _init_reader():
-    global reader
-
-    if reader is None:
-        try:
-            reader = easyocr.Reader(
-                ["en"],
-                gpu=False,
-                verbose=False
-            )
-        except Exception:
-            logger.exception("Failed to initialize EasyOCR reader")
-            reader = None
 
 
 def extract_text(image_path):
-    global reader
-
     if not image_path or not os.path.exists(image_path):
-        logger.warning("extract_text called with missing image: %s", image_path)
-        return ""
-
-    if reader is None:
-        _init_reader()
-
-    if reader is None:
-        # Reader couldn't be created; return empty string to avoid crashing callers
+        logger.warning(
+            "OCR called with missing image: %s",
+            image_path
+        )
         return ""
 
     try:
-        result = reader.readtext(image_path)
-        text = " ".join([item[1] for item in result if len(item) > 1])
-        return text
+        # Read image
+        image = cv2.imread(image_path)
+
+        if image is None:
+            logger.warning(
+                "Could not read image: %s",
+                image_path
+            )
+            return ""
+
+        # Resize large images to reduce memory usage
+        height, width = image.shape[:2]
+
+        max_dimension = 1600
+
+        if max(height, width) > max_dimension:
+            scale = max_dimension / max(height, width)
+
+            image = cv2.resize(
+                image,
+                None,
+                fx=scale,
+                fy=scale,
+                interpolation=cv2.INTER_AREA
+            )
+
+        # Convert to grayscale
+        gray = cv2.cvtColor(
+            image,
+            cv2.COLOR_BGR2GRAY
+        )
+
+        # Improve text readability
+        gray = cv2.threshold(
+            gray,
+            0,
+            255,
+            cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        )[1]
+
+        # OCR
+        text = pytesseract.image_to_string(
+            gray,
+            config="--psm 6"
+        )
+
+        return text.strip()
+
     except Exception:
-        logger.exception("Error during OCR processing for %s", image_path)
+        logger.exception(
+            "OCR processing failed for %s",
+            image_path
+        )
         return ""
