@@ -23,7 +23,7 @@ import { auth } from "../../firebase";
 const COLORS = ["#22c55e", "#eab308", "#ef4444"];
 
 export default function DashboardPage() {
-  const [userEmail, setUserEmail] = useState(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const [analytics, setAnalytics] = useState({
     total_attempts: 0,
@@ -33,7 +33,7 @@ export default function DashboardPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
