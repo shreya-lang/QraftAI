@@ -12,6 +12,10 @@ from firebase_admin import (
 logger = logging.getLogger(__name__)
 
 
+def normalize_email(email):
+    return (email or "").strip().lower()
+
+
 # ==========================================
 # PREVENT MULTIPLE INITIALIZATIONS
 # ==========================================
@@ -55,6 +59,9 @@ def save_attempt(data):
 
         return None
 
+    if "email" in data:
+        data["email"] = normalize_email(data["email"])
+
     db.collection(
         "attempts"
     ).add(data)
@@ -71,6 +78,9 @@ def save_analytics(data):
 
         return None
 
+    if "email" in data:
+        data["email"] = normalize_email(data["email"])
+
     db.collection(
         "analytics"
     ).add(data)
@@ -85,6 +95,8 @@ def save_analytics(data):
 
 def get_user_attempts(user_email):
 
+    normalized_email = normalize_email(user_email)
+
     if db is None:
 
         return []
@@ -94,16 +106,19 @@ def get_user_attempts(user_email):
     ).where(
         "email",
         "==",
-        user_email
+        normalized_email
     ).stream()
 
     attempts = []
 
     for doc in docs:
+        attempt = doc.to_dict()
+        attempt["email"] = normalize_email(attempt.get("email"))
+        attempts.append(attempt)
 
-        attempts.append(
-            doc.to_dict()
-        )
+    attempts.sort(
+        key=lambda item: item.get("created_at") or item.get("timestamp") or 0
+    )
 
     return attempts
 
@@ -114,6 +129,8 @@ def get_user_attempts(user_email):
 
 
 def get_user_analytics(user_email):
+
+    normalized_email = normalize_email(user_email)
 
     if db is None:
 
@@ -133,16 +150,19 @@ def get_user_analytics(user_email):
     ).where(
         "email",
         "==",
-        user_email
+        normalized_email
     ).stream()
 
     attempts = []
 
     for doc in docs:
+        attempt = doc.to_dict()
+        attempt["email"] = normalize_email(attempt.get("email"))
+        attempts.append(attempt)
 
-        attempts.append(
-            doc.to_dict()
-        )
+    attempts.sort(
+        key=lambda item: item.get("created_at") or item.get("timestamp") or 0
+    )
 
     if len(attempts) == 0:
 

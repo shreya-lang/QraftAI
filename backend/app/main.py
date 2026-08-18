@@ -19,7 +19,6 @@ from app.adaptive_engine import (
 
 from app.firebase_service import (
     save_attempt,
-    save_analytics,
     get_user_attempts,
     get_user_analytics
 )
@@ -268,16 +267,6 @@ def evaluate(data: dict):
 
         "ai_verdict":
             ai_result["verdict"]
-    })
-
-
-    save_analytics({
-
-        "email": email,
-
-        "score": evaluation["score"],
-
-        "difficulty": current_difficulty
     })
 
 
