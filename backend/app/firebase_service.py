@@ -16,6 +16,35 @@ def normalize_email(email):
     return (email or "").strip().lower()
 
 
+def _merge_user_attempts(docs):
+    attempts = []
+    seen_ids = set()
+
+    for doc in docs:
+        attempt = doc.to_dict()
+        attempt_id = getattr(doc, "id", None)
+
+        if attempt_id is not None and attempt_id in seen_ids:
+            continue
+
+        if attempt_id is not None:
+            seen_ids.add(attempt_id)
+
+        user_email = attempt.get("email") or attempt.get("user_email")
+        normalized_user_email = normalize_email(user_email)
+        if normalized_user_email:
+            attempt["email"] = normalized_user_email
+            attempt["user_email"] = normalized_user_email
+
+        attempts.append(attempt)
+
+    attempts.sort(
+        key=lambda item: item.get("created_at") or item.get("timestamp") or 0
+    )
+
+    return attempts
+
+
 # ==========================================
 # PREVENT MULTIPLE INITIALIZATIONS
 # ==========================================
@@ -59,8 +88,14 @@ def save_attempt(data):
 
         return None
 
-    if "email" in data:
-        data["email"] = normalize_email(data["email"])
+    email_value = data.get("email") or data.get("user_email")
+
+    if email_value:
+        normalized = normalize_email(email_value)
+        data["email"] = normalized
+        data["user_email"] = normalized
+
+    data.setdefault("created_at", __import__("datetime").datetime.utcnow().isoformat())
 
     db.collection(
         "attempts"
@@ -101,24 +136,19 @@ def get_user_attempts(user_email):
 
         return []
 
-    docs = db.collection(
-        "attempts"
-    ).where(
-        "email",
-        "==",
-        normalized_email
-    ).stream()
+    matched_attempts = []
 
-    attempts = []
+    for field_name in ("email", "user_email"):
+        docs = db.collection(
+            "attempts"
+        ).where(
+            field_name,
+            "==",
+            normalized_email
+        ).stream()
+        matched_attempts.extend(docs)
 
-    for doc in docs:
-        attempt = doc.to_dict()
-        attempt["email"] = normalize_email(attempt.get("email"))
-        attempts.append(attempt)
-
-    attempts.sort(
-        key=lambda item: item.get("created_at") or item.get("timestamp") or 0
-    )
+    attempts = _merge_user_attempts(matched_attempts)
 
     return attempts
 
@@ -145,24 +175,19 @@ def get_user_analytics(user_email):
             "latest_difficulty": "Easy"
         }
 
-    docs = db.collection(
-        "attempts"
-    ).where(
-        "email",
-        "==",
-        normalized_email
-    ).stream()
+    matched_attempts = []
 
-    attempts = []
+    for field_name in ("email", "user_email"):
+        docs = db.collection(
+            "attempts"
+        ).where(
+            field_name,
+            "==",
+            normalized_email
+        ).stream()
+        matched_attempts.extend(docs)
 
-    for doc in docs:
-        attempt = doc.to_dict()
-        attempt["email"] = normalize_email(attempt.get("email"))
-        attempts.append(attempt)
-
-    attempts.sort(
-        key=lambda item: item.get("created_at") or item.get("timestamp") or 0
-    )
+    attempts = _merge_user_attempts(matched_attempts)
 
     if len(attempts) == 0:
 
