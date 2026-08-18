@@ -16,7 +16,6 @@ def extract_text(image_path):
         return ""
 
     try:
-        # Read image
         image = cv2.imread(image_path)
 
         if image is None:
@@ -26,9 +25,7 @@ def extract_text(image_path):
             )
             return ""
 
-        # Resize large images to reduce memory usage
         height, width = image.shape[:2]
-
         max_dimension = 1600
 
         if max(height, width) > max_dimension:
@@ -42,13 +39,11 @@ def extract_text(image_path):
                 interpolation=cv2.INTER_AREA
             )
 
-        # Convert to grayscale
         gray = cv2.cvtColor(
             image,
             cv2.COLOR_BGR2GRAY
         )
 
-        # Improve text readability
         gray = cv2.threshold(
             gray,
             0,
@@ -56,7 +51,6 @@ def extract_text(image_path):
             cv2.THRESH_BINARY + cv2.THRESH_OTSU
         )[1]
 
-        # OCR
         text = pytesseract.image_to_string(
             gray,
             config="--psm 6"
