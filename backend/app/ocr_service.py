@@ -12,7 +12,11 @@ def _init_reader():
 
     if reader is None:
         try:
-            reader = easyocr.Reader(["en"])
+            reader = easyocr.Reader(
+                ["en"],
+                gpu=False,
+                verbose=False
+            )
         except Exception:
             logger.exception("Failed to initialize EasyOCR reader")
             reader = None

@@ -308,7 +308,11 @@ async def upload_answer_image(
             buffer
         )
 
-    text = extract_text(path)
+    try:
+        text = extract_text(path)
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
 
     return {
         "extracted_text": text
